@@ -1,0 +1,90 @@
+Distributed Web Infrastructure - www.foobar.com
+=================================================
+
+Infrastructure overview
+------------------------
+
+  [User browser]
+       |
+  www.foobar.com → DNS → load balancer IP
+       |
+  [HAproxy - Load Balancer]
+       |              |
+  [Server 1]      [Server 2]
+  ├── Nginx        ├── Nginx
+  ├── App server   ├── App server
+  └── App files    └── App files
+       |                  |
+       └──────┬───────────┘
+          [MySQL cluster]
+          Primary (Server 1) ←→ Replica (Server 2)
+
+
+Why each element was added
+---------------------------
+
+2 servers instead of 1
+  To eliminate the single point of failure from the previous design. If one server
+  goes down, the other keeps the site up. It also lets us split the load.
+
+HAproxy (load balancer)
+  It sits in front of both servers and distributes incoming requests between them.
+  Without it, users would all hit one server and we'd be back to the same bottleneck.
+
+MySQL Primary-Replica cluster
+  One database alone is a SPOF and can't handle high read traffic well. A replica
+  offloads reads and acts as a backup if the primary fails.
+
+
+Q&A
+----
+
+What distribution algorithm is HAproxy using?
+  Round Robin — it sends each new request to the next server in line, cycling through
+  all available servers equally. Simple and works well when servers have similar specs.
+
+Active-Active vs Active-Passive — which one is this, and what's the difference?
+
+  This setup is Active-Active: both servers are running and handling traffic at the
+  same time. HAproxy splits requests between them.
+
+  Active-Passive means only one server handles traffic at a time. The second one sits
+  idle and only kicks in if the first one fails (failover). No load sharing happens.
+
+How does a Primary-Replica (Master-Slave) database cluster work?
+  The Primary node handles all write operations (INSERT, UPDATE, DELETE).
+  Every write is then replicated — copied — to the Replica node automatically.
+  The Replica stays in sync and handles read queries, taking load off the Primary.
+
+Primary vs Replica from the application's perspective
+  The app sends writes (create, update, delete) to the Primary only.
+  The app can send reads (SELECT) to the Replica to reduce load on the Primary.
+  If the app doesn't distinguish between the two, everything hits the Primary anyway.
+
+
+Issues with this infrastructure
+---------------------------------
+
+SPOFs
+  - The load balancer is a single point of failure. If HAproxy goes down, no traffic
+    reaches either server.
+  - The Primary database is also a SPOF for writes. If it fails, the site can still
+    serve reads from the Replica, but nothing can be written until failover happens.
+
+No firewall
+  The servers are exposed directly to the internet with no filtering. Anyone can
+  attempt connections on any port, making the infrastructure vulnerable to attacks.
+
+No HTTPS
+  Traffic between users and the load balancer is unencrypted. Passwords, session
+  tokens, and sensitive data are sent in plain text and can be intercepted.
+
+No monitoring
+  There's no visibility into server health, traffic, errors, or resource usage.
+  If a server goes down or starts degrading, nobody gets alerted — you find out when
+  users complain.
+
+
+Screenshot link
+----------------
+[Insert diagram screenshot URL here]
