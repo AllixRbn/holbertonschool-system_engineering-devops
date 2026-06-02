@@ -1,0 +1,78 @@
+Simple Web Stack - www.foobar.com
+==================================
+
+Infrastructure overview
+------------------------
+
+A user types www.foobar.com in their browser. Here's what happens:
+
+1. The browser asks DNS "what IP is www.foobar.com?" — DNS answers 8.8.8.8
+2. The browser sends an HTTP request to 8.8.8.8
+3. Nginx receives the request on the server
+4. If it's a static file (image, CSS...), Nginx serves it directly
+5. If it's dynamic, Nginx passes it to the application server
+6. The app server runs the code, talks to MySQL if needed, builds the response
+7. The response travels back to the user's browser
+
+Everything runs on a single server at IP 8.8.8.8.
+
+  [User browser]
+       |
+  www.foobar.com → DNS → 8.8.8.8
+       |
+  [Server 8.8.8.8]
+    ├── Nginx (web server)
+    ├── Application server
+    ├── Application files (codebase)
+    └── MySQL (database)
+
+
+Q&A
+----
+
+What is a server?
+  A computer (physical or virtual) that listens for requests from clients and
+  sends back responses — in this case, web pages.
+
+What is the role of the domain name?
+  It's a human-friendly alias for the server's IP. Nobody wants to remember
+  8.8.8.8, so foobar.com points there instead.
+
+What type of DNS record is "www" in www.foobar.com?
+  It's an A record — it maps the hostname www.foobar.com to the IPv4 address 8.8.8.8.
+
+What is the role of the web server (Nginx)?
+  It's the front door. It receives HTTP/HTTPS requests, serves static files itself,
+  and forwards anything dynamic to the application server.
+
+What is the role of the application server?
+  It runs the actual code. It processes the request, applies business logic,
+  talks to the database if needed, and returns a response to Nginx.
+
+What is the role of the database (MySQL)?
+  It stores all persistent data — users, content, etc. The app server queries it
+  with SQL whenever it needs to read or write data.
+
+How does the server communicate with the user?
+  Over HTTP (port 80) or HTTPS (port 443), running on top of TCP/IP.
+
+
+Issues with this infrastructure
+---------------------------------
+
+SPOF (Single Point of Failure)
+  Everything is on one server. If it dies, the whole site goes down.
+  There's no backup or failover.
+
+Downtime during maintenance
+  Restarting Nginx or deploying new code takes the site offline.
+  With only one server, there's no way to do a rolling update.
+
+Can't scale with traffic
+  All components share the same machine's CPU and RAM.
+  If traffic spikes, you can't just add more servers — the design doesn't allow it.
+
+
+Screenshot link
+----------------
+[Insert diagram screenshot URL here]
