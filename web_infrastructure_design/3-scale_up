@@ -1,0 +1,61 @@
+Scale Up - www.foobar.com
+=========================
+
+Infrastructure overview
+------------------------
+
+  [User browser]
+       |
+  [HAproxy LB 1] ←→ [HAproxy LB 2]   ← clustered, one active / one standby
+       |
+       |
+  ┌────┴─────────────────────┐
+  |                          |
+[Web Server]         routes dynamic
+(Nginx)              requests down
+  |                          |
+  |                  [App Server]
+  |                  (business logic)
+  |                          |
+  |                  [Database Server]
+  |                  (MySQL Primary)
+  |
+serves static files directly
+
+
+Why each element was added
+---------------------------
+
+Extra server (4th server total)
+  The previous design had all components crammed onto each server. Now each layer
+  gets its own dedicated machine: one for Nginx, one for the app, one for the
+  database. That's three component servers plus the new one brings us to a proper
+  split setup.
+
+Second HAproxy load balancer (clustered with the first)
+  The load balancer was a single point of failure in the previous design. By
+  clustering two HAproxy instances together, if one goes down the other takes over
+  automatically. Traffic never stops flowing. The two LBs share a virtual IP and
+  one is active while the other is on standby, ready to step in.
+
+Splitting components onto separate servers
+  Putting the web server, app server, and database each on their own machine means:
+  - No more resource competition between layers
+  - You can scale each layer independently (e.g. add more app servers without
+    touching the database server)
+  - A crash or overload in one layer doesn't drag the others down
+  - Easier to secure and maintain each component separately
+
+Web server vs application server — why they're separate
+  The web server (Nginx) only handles HTTP — serving static files, managing
+  connections, and routing requests. It doesn't need to run code.
+  The application server runs the actual business logic — it executes code,
+  processes data, and talks to the database. Mixing them on the same machine
+  means a spike in app processing eats into the web server's ability to handle
+  connections, and vice versa. Keeping them separate makes both faster and
+  easier to scale.
+
+
+Screenshot link
+----------------
+[Insert diagram screenshot URL here]
