@@ -1,0 +1,102 @@
+Secured and Monitored Web Infrastructure - www.foobar.com
+===========================================================
+
+Infrastructure overview
+------------------------
+
+  [User browser]
+       |
+       | HTTPS (port 443)
+       |
+  [Firewall 1]
+       |
+  [HAproxy - Load Balancer + SSL certificate]  ← terminates HTTPS here
+       |                    |
+  [Firewall 2]         [Firewall 3]
+       |                    |
+  [Server 1]           [Server 2]
+  ├── Nginx              ├── Nginx
+  ├── App server         ├── App server
+  ├── App files          ├── App files
+  ├── MySQL (Primary)    ├── MySQL (Replica)
+  └── Monitoring client  └── Monitoring client
+                                    +
+                         [Monitoring client on LB]
+                                    |
+                              [Sumologic / monitoring service]
+
+
+Why each element was added
+---------------------------
+
+3 firewalls
+  One in front of the load balancer, one in front of each server. They filter
+  incoming and outgoing traffic, blocking anything that shouldn't be there
+  (unwanted ports, suspicious IPs, etc.).
+
+SSL certificate
+  Installed on the load balancer so that traffic between users and the
+  infrastructure is encrypted over HTTPS. Without it, data travels in plain text.
+
+3 monitoring clients
+  One on the load balancer and one on each server. They collect metrics, logs,
+  and events and ship them to a monitoring service (like Sumologic) so you have
+  visibility into what's happening across the whole infrastructure.
+
+
+Q&A
+----
+
+What are firewalls for?
+  They act as gatekeepers. They inspect network traffic and block anything that
+  doesn't match the allowed rules — wrong port, unknown source, malicious pattern.
+  They reduce the attack surface by making sure only intended traffic gets through.
+
+Why serve traffic over HTTPS?
+  HTTPS encrypts the connection between the user and the server using TLS.
+  This protects sensitive data (passwords, tokens, personal info) from being
+  intercepted or tampered with in transit. It also builds user trust and is
+  required by modern browsers for many features.
+
+What is monitoring used for?
+  To know what's happening on your infrastructure in real time. It tracks things
+  like server health, response times, error rates, CPU/memory usage, and traffic.
+  When something breaks or degrades, monitoring is what alerts you before users
+  start complaining.
+
+How does the monitoring tool collect data?
+  Each monitoring client runs as an agent on the server. It reads system metrics,
+  application logs, and process stats, then ships that data to the central
+  monitoring service (Sumologic) at regular intervals or in real time.
+
+How to monitor web server QPS (queries per second)?
+  Configure the monitoring client to read Nginx's access logs or its built-in
+  stub_status metrics. The agent parses request counts over time and reports QPS
+  to the monitoring service, where you can set up dashboards and alerts.
+
+
+Issues with this infrastructure
+---------------------------------
+
+Terminating SSL at the load balancer is a problem
+  Once the load balancer decrypts the traffic, it forwards requests to the backend
+  servers over plain HTTP. That means traffic inside the infrastructure is
+  unencrypted. If the internal network is compromised, that data is exposed.
+  Ideally, encryption should be maintained end-to-end, all the way to the servers.
+
+Only one MySQL server can accept writes
+  The Primary is the only node that handles writes. If it goes down, no write
+  operations can happen until a failover is completed — the site breaks for anything
+  that needs to write data. There's no redundancy for the write path.
+
+All servers have the same components (web + app + database on each)
+  This creates resource competition — the database, app server, and web server all
+  fight for the same CPU and RAM. It also makes scaling harder: if you need more
+  database capacity, you have to scale the whole server instead of just that layer.
+  It also means a problem in one component (like a memory leak in the app) can
+  affect the database running on the same machine.
+
+
+Screenshot link
+----------------
+[Insert diagram screenshot URL here]
