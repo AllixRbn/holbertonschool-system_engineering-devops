@@ -4,23 +4,26 @@ Scale Up - www.foobar.com
 Infrastructure overview
 ------------------------
 
-  [User browser]
-       |
-  [HAproxy LB 1] ←→ [HAproxy LB 2]   ← clustered, one active / one standby
-       |
-       |
-  ┌────┴─────────────────────┐
-  |                          |
-[Web Server]         routes dynamic
-(Nginx)              requests down
-  |                          |
-  |                  [App Server]
-  |                  (business logic)
-  |                          |
-  |                  [Database Server]
-  |                  (MySQL Primary)
-  |
-serves static files directly
+```mermaid
+graph TD
+    User["User Browser"]
+    VIP["Virtual IP\nshared by both LBs"]
+
+    User -->|"HTTPS request"| VIP
+
+    subgraph LBCluster["HAProxy Cluster"]
+        LB1["HAProxy LB 1\nActive"] <-->|"heartbeat"| LB2["HAProxy LB 2\nStandby"]
+    end
+
+    VIP --> LBCluster
+
+    LBCluster --> WS["Web Server\nNginx\nserves static files"]
+    WS -->|"dynamic requests only"| AS["Application Server\nbusiness logic"]
+    AS <-->|"SQL"| DB["Database Server\nMySQL Primary"]
+
+    WS -->|"static response"| User
+    AS -->|"dynamic response"| WS
+```
 
 
 Why each element was added
@@ -56,6 +59,4 @@ Web server vs application server — why they're separate
   easier to scale.
 
 
-Screenshot link
-----------------
-[Insert diagram screenshot URL here]
+![diagram](3-scale_up.png)

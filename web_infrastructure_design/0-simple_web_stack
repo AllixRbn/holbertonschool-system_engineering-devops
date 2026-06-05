@@ -16,15 +16,28 @@ A user types www.foobar.com in their browser. Here's what happens:
 
 Everything runs on a single server at IP 8.8.8.8.
 
-  [User browser]
-       |
-  www.foobar.com → DNS → 8.8.8.8
-       |
-  [Server 8.8.8.8]
-    ├── Nginx (web server)
-    ├── Application server
-    ├── Application files (codebase)
-    └── MySQL (database)
+```mermaid
+graph TD
+    User["User Browser"]
+    DNS["DNS\nA record: www.foobar.com → 8.8.8.8"]
+
+    User -->|"1. DNS query"| DNS
+    DNS -->|"2. returns 8.8.8.8"| User
+    User -->|"3. HTTP/HTTPS request via TCP/IP"| Nginx
+
+    subgraph Server["Server — IP: 8.8.8.8"]
+        Nginx["Nginx\nWeb Server"]
+        App["Application Server"]
+        Files["Application Files\ncodebase"]
+        MySQL["MySQL\nDatabase"]
+
+        Nginx -->|"dynamic request"| App
+        App --- Files
+        App <-->|"SQL read/write"| MySQL
+    end
+
+    Nginx -->|"4. HTTP response"| User
+```
 
 
 Q&A
@@ -73,6 +86,4 @@ Can't scale with traffic
   If traffic spikes, you can't just add more servers — the design doesn't allow it.
 
 
-Screenshot link
-----------------
-[Insert diagram screenshot URL here]
+![diagram](0-simple_web_stack.png)

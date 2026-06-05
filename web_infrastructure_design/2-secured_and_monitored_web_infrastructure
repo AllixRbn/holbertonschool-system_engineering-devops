@@ -4,26 +4,41 @@ Secured and Monitored Web Infrastructure - www.foobar.com
 Infrastructure overview
 ------------------------
 
-  [User browser]
-       |
-       | HTTPS (port 443)
-       |
-  [Firewall 1]
-       |
-  [HAproxy - Load Balancer + SSL certificate]  ← terminates HTTPS here
-       |                    |
-  [Firewall 2]         [Firewall 3]
-       |                    |
-  [Server 1]           [Server 2]
-  ├── Nginx              ├── Nginx
-  ├── App server         ├── App server
-  ├── App files          ├── App files
-  ├── MySQL (Primary)    ├── MySQL (Replica)
-  └── Monitoring client  └── Monitoring client
-                                    +
-                         [Monitoring client on LB]
-                                    |
-                              [Sumologic / monitoring service]
+```mermaid
+graph TD
+    User["User Browser"]
+    User -->|"HTTPS port 443"| FW1["Firewall 1"]
+    FW1 --> LB["HAProxy Load Balancer\n+ SSL Certificate\nterminates HTTPS here"]
+    MC_LB["Monitoring Client"]
+
+    LB -->|"HTTP"| FW2["Firewall 2"]
+    LB -->|"HTTP"| FW3["Firewall 3"]
+
+    subgraph S1["Server 1"]
+        FW2 --> N1["Nginx"]
+        N1 --> A1["App Server"]
+        A1 --> F1["App Files"]
+        A1 <-->|"SQL"| DB1["MySQL Primary"]
+        MC1["Monitoring Client"]
+    end
+
+    subgraph S2["Server 2"]
+        FW3 --> N2["Nginx"]
+        N2 --> A2["App Server"]
+        A2 --> F2["App Files"]
+        A2 <-->|"SQL"| DB2["MySQL Replica"]
+        MC2["Monitoring Client"]
+    end
+
+    DB1 -->|"replication"| DB2
+
+    MC_LB -->|"metrics/logs"| MON["Sumologic\nMonitoring Service"]
+    MC1  -->|"metrics/logs"| MON
+    MC2  -->|"metrics/logs"| MON
+
+    N1 -->|"response"| User
+    N2 -->|"response"| User
+```
 
 
 Why each element was added
@@ -97,6 +112,4 @@ All servers have the same components (web + app + database on each)
   affect the database running on the same machine.
 
 
-Screenshot link
-----------------
-[Insert diagram screenshot URL here]
+![diagram](2-secured_and_monitored_web_infrastructure.png)

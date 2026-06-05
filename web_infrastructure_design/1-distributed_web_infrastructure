@@ -4,20 +4,28 @@ Distributed Web Infrastructure - www.foobar.com
 Infrastructure overview
 ------------------------
 
-  [User browser]
-       |
-  www.foobar.com → DNS → load balancer IP
-       |
-  [HAproxy - Load Balancer]
-       |              |
-  [Server 1]      [Server 2]
-  ├── Nginx        ├── Nginx
-  ├── App server   ├── App server
-  └── App files    └── App files
-       |                  |
-       └──────┬───────────┘
-          [MySQL cluster]
-          Primary (Server 1) ←→ Replica (Server 2)
+```mermaid
+graph TD
+    User["User Browser"]
+    User -->|"HTTP request\nwww.foobar.com"| HAP["HAProxy\nLoad Balancer\nRound Robin"]
+
+    subgraph S1["Server 1"]
+        N1["Nginx"] --> A1["App Server"] --> F1["App Files"]
+        A1 <-->|"SQL"| DB1["MySQL\nPrimary\nwrites + reads"]
+    end
+
+    subgraph S2["Server 2"]
+        N2["Nginx"] --> A2["App Server"] --> F2["App Files"]
+        A2 <-->|"SQL"| DB2["MySQL\nReplica\nreads only"]
+    end
+
+    HAP -->|"request"| N1
+    HAP -->|"request"| N2
+    DB1 -->|"replication"| DB2
+
+    N1 -->|"response"| User
+    N2 -->|"response"| User
+```
 
 
 Why each element was added
@@ -85,6 +93,4 @@ No monitoring
   users complain.
 
 
-Screenshot link
-----------------
-[Insert diagram screenshot URL here]
+![diagram](1-distributed_web_infrastructure.png)
